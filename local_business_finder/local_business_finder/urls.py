@@ -18,7 +18,7 @@ from django.contrib import admin
 from django.urls import path
 from django.urls import path, include  
 from businesses.views import map_view
-from businesses.views import business_geojson_list, map_view
+from businesses.views import business_geojson_list
 
 
 urlpatterns = [
