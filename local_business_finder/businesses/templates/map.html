@@ -1,10 +1,12 @@
 {% extends 'base.html' %}
 
 {% load static %}
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
 
 {% block title %}Interactive City Map{% endblock %}
 
 {% block content %}
+
 <div class="container-fluid p-0">
     <!-- Control Panel -->
     <div class="row">
@@ -122,8 +124,10 @@
                 <button type="button" class="btn btn-primary" id="save-city">Save City</button>
             </div>
         </div>
+        
     </div>
 </div>
+
 {% endblock %}
 
 {% block extra_js %}

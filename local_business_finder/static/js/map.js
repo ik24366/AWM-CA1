@@ -52,6 +52,62 @@ function loadBusinesses() {
         .finally(() => {
             showLoading(false);
         });
+        // Fetch business data GeoJSON from API
+fetch('/api/businesses/')
+  .then(response => response.json())
+  .then(data => {
+    // Initialize map centered on Dublin
+    const map = L.map('map').setView([53.3498, -6.2603], 13);
+
+    // Add OpenStreetMap tile layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Create a layer group for markers
+    const markers = L.layerGroup().addTo(map);
+
+    // Sidebar cafe list container
+    const cafeList = document.getElementById('cafe-list');
+
+    // For each business feature, add a marker and sidebar entry
+    data.features.forEach(feature => {
+      const coords = feature.geometry.coordinates;
+      const props = feature.properties;
+
+      // Create marker
+      const marker = L.marker([coords[1], coords[0]]).addTo(markers);
+
+      // Create popup content
+      const popupContent = `
+        <strong>${props.name}</strong><br>
+        <em>${props.category}</em><br>
+        ${props.description ? props.description + '<br>' : ''}
+        Address: ${props.address}<br>
+        Phone: ${props.phone_number}
+      `;
+
+      marker.bindPopup(popupContent);
+
+      // Create sidebar list item
+      const li = document.createElement('li');
+      li.innerHTML = `<strong>${props.name}</strong><br><small>${props.address}</small>`;
+      cafeList.appendChild(li);
+
+      // Click on list item opens popup and centers map
+      li.addEventListener('click', () => {
+        marker.openPopup();
+        map.panTo(marker.getLatLng());
+      });
+    });
+
+    // Optional: Fit map bounds to markers
+    const group = new L.featureGroup(markers.getLayers());
+    map.fitBounds(group.getBounds(), { padding: [50, 50] });
+  })
+  .catch(error => console.error('Error loading business data:', error));
+
 }
  
 function displayBusinessesOnMap(businesses) {

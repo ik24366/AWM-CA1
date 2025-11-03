@@ -26,6 +26,7 @@ urlpatterns = [
     #path('api/', include('businesses.urls')),  # This exposes your business API at /api/businesses/
     path('map/', map_view, name='map'),  
     path('api/businesses/', business_geojson_list, name='business-geojson-list'),
+    
 
 
 ]
