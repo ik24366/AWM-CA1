@@ -1,5 +1,5 @@
 // Local Business Finder - Main JavaScript functionality
-let map;
+
 let businessMarkers = L.layerGroup();
 let allBusinessesData = [];
  
@@ -116,6 +116,13 @@ function displayBusinessesOnMap(businesses) {
    
     businesses.forEach(business => {
         try {
+            const matchaIcon = L.icon({
+                iconUrl: '/static/image/Matcha.svg',  // Adjust path as appropriate
+                iconSize: [40, 40],        // adjust as needed
+                iconAnchor: [20, 40],      // bottom point of the icon corresponds to the marker's actual location
+                popupAnchor: [0, -40],     // where popups open relative to the icon
+            });
+
             const { geometry, properties } = business;
            
             if (!geometry || !geometry.coordinates || !Array.isArray(geometry.coordinates)) {
@@ -130,9 +137,9 @@ function displayBusinessesOnMap(businesses) {
                 return;
             }
            
-            const marker = L.marker([lat, lng])
-                .bindPopup(createPopupContent(properties), { maxWidth: 300, className: 'custom-popup' });
-           
+           const marker = L.marker([lat, lng], { icon: matchaIcon })
+            .bindPopup(createPopupContent(properties), { maxWidth: 300, className: 'custom-popup' });
+
             marker.on('click', function() {
                 showBusinessInfo(properties);
             });
@@ -205,7 +212,27 @@ function showBusinessInfo(business) {
  
 function setupEventListeners() {
     // Optionally setup search filter, refresh buttons, etc.
-}
+    document.getElementById('search-btn').onclick = function() {
+        var query = document.getElementById('search-input').value.trim().toLowerCase();
+        // Filter by name or address containing query
+        var filtered = allBusinessesData.filter(function(feature) {
+            var props = feature.properties;
+            return (props.name && props.name.toLowerCase().includes(query)) ||
+                   (props.address && props.address.toLowerCase().includes(query));
+        });
+        displayBusinessesOnMap(filtered);
+        updateSidebar(filtered, businessMarkers.getLayers());
+        updateBusinessCount(filtered.length);
+    };
+
+    document.getElementById('clear-btn').onclick = function() {
+        document.getElementById('search-input').value = '';
+        displayBusinessesOnMap(allBusinessesData);
+        updateSidebar(allBusinessesData, businessMarkers.getLayers());
+        updateBusinessCount(allBusinessesData.length);
+    };
+    }
+
  
 function updateBusinessCount(count) {
     const countElement = document.getElementById('business-count');
@@ -247,4 +274,22 @@ function showAlert(message, type) {
             alertDiv.remove();
         }
     }, 5000);
+}
+function updateSidebar(businesses, markers) {
+    const cafeList = document.getElementById('cafe-list');
+    cafeList.innerHTML = '';
+    businesses.forEach((feature, idx) => {
+        const props = feature.properties;
+        const li = document.createElement('li');
+        li.className = 'list-group-item';
+        li.innerHTML = `<strong>${props.name}</strong><br><small>${props.address || ''}</small>`;
+        li.addEventListener('click', () => {
+            // Open the corresponding marker popup and pan map to marker when list item clicked
+            if (markers[idx]) {
+                markers[idx].openPopup();
+                map.panTo(markers[idx].getLatLng());
+            }
+        });
+        cafeList.appendChild(li);
+    });
 }

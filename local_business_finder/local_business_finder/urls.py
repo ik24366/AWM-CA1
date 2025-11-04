@@ -26,7 +26,8 @@ urlpatterns = [
     #path('api/', include('businesses.urls')),  # This exposes your business API at /api/businesses/
     path('map/', map_view, name='map'),  
     path('api/businesses/', business_geojson_list, name='business-geojson-list'),
-    
+    path('businesses/', include('businesses.urls')),  # This includes your proximity path
+
 
 
 ]

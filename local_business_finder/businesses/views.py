@@ -8,7 +8,9 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .models import Business
 from .serializers import BusinessGeoSerializer
-
+from django.contrib.gis.geos import Point
+from django.contrib.gis.db.models.functions import Distance
+from django.http import JsonResponse
 
 
 @api_view(['GET'])
@@ -27,7 +29,7 @@ def search_by_proximity(request):
     try:
         lat = float(request.GET.get('lat'))
         lon = float(request.GET.get('lon'))
-        radius_meters = float(request.GET.get('radius', 1000))  # default radius 1000 meters
+        radius_meters = float(request.GET.get('radius', 1000))  # Default 1000m radius
     except (TypeError, ValueError):
         return JsonResponse({'error': 'Invalid or missing parameters'}, status=400)
 
@@ -38,11 +40,17 @@ def search_by_proximity(request):
 
     results = [
         {
-            'id': b.id,
-            'name': b.name,
-            'distance_m': b.distance.m
+            'id': business.id,
+            'name': business.name,
+            'category': business.category,
+            'address': business.address,
+            'phone_number': business.phone_number,
+            'description': business.description,
+            'latitude': business.location.y,
+            'longitude': business.location.x,
+            'distance_m': round(business.distance.m, 2),
         }
-        for b in nearby_businesses
+        for business in nearby_businesses
     ]
 
-    return JsonResponse(results, safe=False)
+    return JsonResponse({'results': results})
