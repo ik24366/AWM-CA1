@@ -53,60 +53,9 @@ function loadBusinesses() {
             showLoading(false);
         });
         // Fetch business data GeoJSON from API
-fetch('/api/businesses/')
-  .then(response => response.json())
-  .then(data => {
-    // Initialize map centered on Dublin
-    const map = L.map('map').setView([53.3498, -6.2603], 13);
 
-    // Add OpenStreetMap tile layer
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 18,
-      attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(map);
 
-    // Create a layer group for markers
-    const markers = L.layerGroup().addTo(map);
-
-    // Sidebar cafe list container
-    const cafeList = document.getElementById('cafe-list');
-
-    // For each business feature, add a marker and sidebar entry
-    data.features.forEach(feature => {
-      const coords = feature.geometry.coordinates;
-      const props = feature.properties;
-
-      // Create marker
-      const marker = L.marker([coords[1], coords[0]]).addTo(markers);
-
-      // Create popup content
-      const popupContent = `
-        <strong>${props.name}</strong><br>
-        <em>${props.category}</em><br>
-        ${props.description ? props.description + '<br>' : ''}
-        Address: ${props.address}<br>
-        Phone: ${props.phone_number}
-      `;
-
-      marker.bindPopup(popupContent);
-
-      // Create sidebar list item
-      const li = document.createElement('li');
-      li.innerHTML = `<strong>${props.name}</strong><br><small>${props.address}</small>`;
-      cafeList.appendChild(li);
-
-      // Click on list item opens popup and centers map
-      li.addEventListener('click', () => {
-        marker.openPopup();
-        map.panTo(marker.getLatLng());
-      });
-    });
-
-    // Optional: Fit map bounds to markers
-    const group = new L.featureGroup(markers.getLayers());
-    map.fitBounds(group.getBounds(), { padding: [50, 50] });
-  })
-  .catch(error => console.error('Error loading business data:', error));
+   
 
 }
  
@@ -212,25 +161,75 @@ function showBusinessInfo(business) {
  
 function setupEventListeners() {
     // Optionally setup search filter, refresh buttons, etc.
-    document.getElementById('search-btn').onclick = function() {
-        var query = document.getElementById('search-input').value.trim().toLowerCase();
-        // Filter by name or address containing query
-        var filtered = allBusinessesData.filter(function(feature) {
-            var props = feature.properties;
-            return (props.name && props.name.toLowerCase().includes(query)) ||
-                   (props.address && props.address.toLowerCase().includes(query));
-        });
-        displayBusinessesOnMap(filtered);
-        updateSidebar(filtered, businessMarkers.getLayers());
-        updateBusinessCount(filtered.length);
-    };
+   document.getElementById('search-btn').onclick = function() {
+    var query = document.getElementById('city-search').value.trim().toLowerCase();
+    var filtered = allBusinessesData.filter(function(feature) {
+        var props = feature.properties || {};
+        return (props.name && props.name.toLowerCase().includes(query)) ||
+               (props.address && props.address.toLowerCase().includes(query));
+    });
+    displayBusinessesOnMap(filtered);
+    updateSidebar(filtered, businessMarkers.getLayers());
+    updateBusinessCount(filtered.length);
+};
 
-    document.getElementById('clear-btn').onclick = function() {
-        document.getElementById('search-input').value = '';
-        displayBusinessesOnMap(allBusinessesData);
-        updateSidebar(allBusinessesData, businessMarkers.getLayers());
-        updateBusinessCount(allBusinessesData.length);
-    };
+     // Proximity search using Add Cafe button
+       // Declare variable to hold pointer marker so we can update location on each click
+    let pointerMarker = null;
+
+    // Activate map click event after pressing "Add Cafe" button
+    const addCafeBtn = document.getElementById('add-city-btn');
+    if (addCafeBtn) {
+        addCafeBtn.onclick = function(event) {
+            event.preventDefault();
+
+            alert('Click on the map to select location for proximity search');
+
+            // Enable map click event listener
+            map.once('click', async function(e) {
+                const { lat, lng } = e.latlng;
+
+                // Remove previous pointerMarker if it exists
+                if (pointerMarker) {
+                    map.removeLayer(pointerMarker);
+                }
+
+                // Add marker at clicked location
+                pointerMarker = L.marker([lat, lng]).addTo(map);
+
+                // Call your backend proximity API with 1000m radius
+                try {
+                    const response = await fetch(`/businesses/search/proximity/?lat=${lat}&lon=${lng}&radius=1000`);
+                    const data = await response.json();
+
+                    if (data.error) {
+                        alert('Error: ' + data.error);
+                        return;
+                    }
+
+                    const nearbyCafes = data.results || [];
+
+                    if (nearbyCafes.length === 0) {
+                        pointerMarker.bindPopup('No cafes found within 1000 meters.').openPopup();
+                        return;
+                    }
+
+                    // Build popup content listing all nearby cafes
+                    let popupContent = '<div><strong>Cafes within 1000m:</strong><ul>';
+                    nearbyCafes.forEach(cafe => {
+                        popupContent += `<li><strong>${cafe.name}</strong> - ${cafe.address}</li>`;
+                    });
+                    popupContent += '</ul></div>';
+
+                    pointerMarker.bindPopup(popupContent).openPopup();
+
+                } catch (error) {
+                    console.error('Failed to fetch proximity cafes:', error);
+                    alert('Failed to fetch cafes.');
+                }
+            });
+        };
+    }
     }
 
  
