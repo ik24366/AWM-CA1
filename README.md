@@ -95,5 +95,5 @@ For questions or bug reports, open an issue or email [support@example.com](mailt
 
 ---
 
-> Special thanks to classmate Aidan Mcphee for technical inspiration!
+
 
