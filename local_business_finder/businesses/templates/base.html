@@ -5,7 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Matcha Cafes{% endblock %}</title>
-   
+ 
+
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
@@ -40,10 +41,35 @@
         </div>
     </nav>
 
-    <main>
+    
+  
+  
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="{% static 'manifest.json' %}">
+    <meta name="theme-color" content="#97c86e">
+    <meta name="description" content="Discover and filter matcha cafes across Dublin">
+    
+    <!-- Add to Home Screen (iOS) -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Matcha Mapper">
+    
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    </head>
+    <body>
         {% block content %}{% endblock %}
-    </main>
-    <div class="input-group mb-3" style="max-width: 460px;">
+        
+        <!-- Service Worker Registration -->
+        <script>
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('{% static 'service-worker.js' %}')
+                    .then(reg => console.log('Service Worker registered'))
+                    .catch(err => console.log('Service Worker registration failed:', err));
+            }
+        </script>
+    </body>
+
+      <div class="input-group mb-3" style="max-width: 460px;">
   <input type="number" step="0.000001" id="lat-input" class="form-control" placeholder="Latitude" />
   <input type="number" step="0.000001" id="lon-input" class="form-control" placeholder="Longitude" />
   <input type="number" id="radius-input" class="form-control" placeholder="Radius (meters)" value="1000"/>
