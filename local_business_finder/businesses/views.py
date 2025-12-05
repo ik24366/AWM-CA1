@@ -9,8 +9,8 @@ from django_filters import FilterSet, CharFilter, NumberFilter
 
 from .models import Business
 from .serializers import BusinessGeoSerializer
-from django.contrib.gis.geos import Point
-from django.contrib.gis.db.models.functions import Distance
+#from django.contrib.gis.geos import Point
+#from django.contrib.gis.db.models.functions import Distance
 
 
 # ============ BASIC VIEWS (keep from CA1) ============

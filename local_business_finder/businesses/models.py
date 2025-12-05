@@ -12,7 +12,7 @@ class Business(models.Model):
             ('dessert', 'Dessert Bar'),
         ])
     category = models.CharField(max_length=50)
-    location = geomodels.PointField(srid=4326)
+    location = geomodels.CharField(srid=4326)
     description = models.TextField(blank=True)
     address = models.CharField(max_length=200, blank=True)
     phone_number = models.CharField(max_length=20, blank=True)
