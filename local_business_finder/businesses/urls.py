@@ -14,9 +14,9 @@ urlpatterns = [
     #path('businesses/', BusinessList.as_view(), name='business-list'),
     path('map/', map_view, name='map'),
     path('search/proximity/', views.search_by_proximity, name='search_by_proximity'),
+    path('search/recommend/', views.recommend_businesses, name='recommend_businesses'),
     path('geojson/', views.business_geojson_list, name='business_geojson_list'),
-
-     path('', include(router.urls)),
+    path('', include(router.urls)),
 
 
 ]

@@ -9,7 +9,8 @@ document.addEventListener('DOMContentLoaded', function() {
     loadBusinesses();
     setupEventListeners();
 });
- 
+
+
 function initializeMap() {
     // Initialize the map - Center on Dublin area 
     map = L.map('map').setView([53.35, -6.26], 12);
@@ -121,10 +122,22 @@ function createPopupContent(business) {
     const address = business.address || 'Address not specified';
     const phone = business.phone_number || 'Phone number not available';
 
+    const rating = business.rating !== undefined && business.rating !== null
+        ? business.rating.toFixed(1)
+        : 'Not rated';
+
+    const price = business.price_range || 'N/A';
+    const score = business.score !== undefined ? business.score : null;
+    const tags = business.tags ? business.tags.split(',').join(', ') : '';
+
     return `
         <div class="business-popup">
             <h6>${name}</h6>
             <div><strong>Category:</strong> ${category}</div>
+            <div><strong>Rating:</strong> ${rating} / 5</div>
+            <div><strong>Price:</strong> ${price}</div>
+            ${score !== null ? `<div><strong>Match score:</strong> ${score}</div>` : ''}
+            ${tags ? `<div><strong>Tags:</strong> ${tags}</div>` : ''}
             <div><strong>Address:</strong> ${address}</div>
             ${description ? `<div><em>${description}</em></div>` : ''}
             <div><strong>Phone:</strong> ${phone}</div>
@@ -172,6 +185,7 @@ function setupEventListeners() {
     updateSidebar(filtered, businessMarkers.getLayers());
     updateBusinessCount(filtered.length);
 };
+}
 
      // Proximity search using Add Cafe button
        // Declare variable to hold pointer marker so we can update location on each click
@@ -199,7 +213,7 @@ function setupEventListeners() {
 
                 // Call your backend proximity API with 1000m radius
                 try {
-                    const response = await fetch(`/businesses/search/proximity/?lat=${lat}&lon=${lng}&radius=1000`);
+                    const response = await fetch(`/search/proximity/?lat=${lat}&lon=${lng}&radius=1000`);
                     const data = await response.json();
 
                     if (data.error) {
@@ -230,7 +244,8 @@ function setupEventListeners() {
             });
         };
     }
-    }
+    
+
 
  
 function updateBusinessCount(count) {
@@ -290,5 +305,77 @@ function updateSidebar(businesses, markers) {
             }
         });
         cafeList.appendChild(li);
+    });
+}
+// Bottom-left Recommendations (click on map to choose location)
+const proximityBtn = document.getElementById('proximity-search-btn');
+
+if (proximityBtn) {
+    proximityBtn.addEventListener('click', () => {
+        const radius = document.getElementById('radius-input').value || 1000;
+
+        alert('Click on the map to get recommended cafes near that location.');
+
+        map.once('click', async (e) => {
+            const lat = e.latlng.lat;
+            const lon = e.latlng.lng;
+
+            const url = `/search/recommend/?lat=${lat}&lon=${lon}&radius=${radius}`;
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (!response.ok || data.success === false) {
+                    alert('Recommendation error: ' + JSON.stringify(data.errors || data.error || {}));
+                    return;
+                }
+
+                const recommendations = data.results || [];
+                if (recommendations.length === 0) {
+                    alert('No recommended cafes within ' + radius + ' meters.');
+                    return;
+                }
+
+                // 1) Popup listing top recommended cafes at clicked location
+                let popupContent = '<div><strong>Top recommended cafes:</strong><ul>';
+                recommendations.forEach(cafe => {
+                    const rating = cafe.rating !== null && cafe.rating !== undefined
+                        ? Number(cafe.rating).toFixed(1)
+                        : 'N/A';
+                    const price = cafe.price_range || '€€';
+                    popupContent += `<li><strong>${cafe.name}</strong> (${rating}/5, ${price})<br><small>${cafe.address || ''}</small></li>`;
+                });
+                popupContent += '</ul></div>';
+
+                const recMarker = L.marker([lat, lon]).addTo(map);
+                recMarker.bindPopup(popupContent, { maxWidth: 320 }).openPopup();
+
+                // 2) Also plot each recommended cafe as markers
+                businessMarkers.clearLayers();
+                recommendations.forEach(cafe => {
+                    const matchaIcon = L.icon({
+                        iconUrl: '/static/image/Matcha.svg',
+                        iconSize: [40, 40],
+                        iconAnchor: [20, 40],
+                        popupAnchor: [0, -40],
+                    });
+
+                    const marker = L.marker([cafe.latitude, cafe.longitude], { icon: matchaIcon })
+                        .bindPopup(createPopupContent(cafe), { maxWidth: 300, className: 'custom-popup' });
+
+                    businessMarkers.addLayer(marker);
+                });
+
+                const group = new L.featureGroup(businessMarkers.getLayers());
+                if (group.getLayers().length > 0) {
+                    map.fitBounds(group.getBounds().pad(0.1));
+                }
+
+            } catch (err) {
+                console.error('Failed to fetch recommendations:', err);
+                alert('Failed to fetch recommendations.');
+            }
+        });
     });
 }
