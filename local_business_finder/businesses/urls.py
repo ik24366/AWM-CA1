@@ -7,6 +7,7 @@ from .views import search_by_proximity, business_geojson_list, map_view
 from rest_framework.routers import SimpleRouter
 from .views import BusinessViewSet, map_view, search_by_proximity, business_geojson_list
 
+
 router = SimpleRouter()
 router.register(r'cafes/advanced', BusinessViewSet, basename='cafe-advanced')
 
@@ -17,6 +18,7 @@ urlpatterns = [
     path('search/recommend/', views.recommend_businesses, name='recommend_businesses'),
     path('geojson/', views.business_geojson_list, name='business_geojson_list'),
     path('', include(router.urls)),
+
 
 
 ]

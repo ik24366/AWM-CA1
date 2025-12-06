@@ -224,3 +224,4 @@ def recommend_businesses(request):
         'count': len(results),
         'results': results,
         })
+

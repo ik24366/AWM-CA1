@@ -9,15 +9,15 @@
   "theme_color": "#97c86e",
   "icons": [
     {
-      "src": "/static/icon-192.png",
+      "src": "/static/matcha-192.jpg",
       "sizes": "192x192",
-      "type": "image/png",
+      "type": "matcha-192.jpg",
       "purpose": "any"
     },
     {
-      "src": "/static/icon-512.png",
+      "src": "/static/matcha-512.jpg",
       "sizes": "512x512",
-      "type": "image/png",
+      "type": "matcha-512.jpg",
       "purpose": "any"
     }
   ],

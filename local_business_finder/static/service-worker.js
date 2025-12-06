@@ -4,7 +4,8 @@ const urlsToCache = [
   '/map/',
   '/static/css/style.css',
   '/static/js/map.js',
-  '/offline.html'
+  '/offline.html',
+  '/static/manifest.json',
 ];
 
 // Install event - cache resources

@@ -9,6 +9,12 @@ document.addEventListener('DOMContentLoaded', function() {
     loadBusinesses();
     setupEventListeners();
 });
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/static/service-worker.js')
+    .then(reg => console.log('SW registered', reg))
+    .catch(err => console.log('SW failed', err));
+}
+
 
 
 function initializeMap() {
@@ -129,6 +135,46 @@ function createPopupContent(business) {
     const price = business.price_range || 'N/A';
     const score = business.score !== undefined ? business.score : null;
     const tags = business.tags ? business.tags.split(',').join(', ') : '';
+    
+    // Extract lat/lon from the Business model location field
+    let lat = null;
+    let lon = null;
+    
+    if (business.location && business.location.coordinates) {
+        // GeoJSON format: [longitude, latitude]
+        lon = business.location.coordinates[0];
+        lat = business.location.coordinates[1];
+    }
+    
+    console.log('Business:', business);
+    console.log('Lat:', lat, 'Lon:', lon);
+    
+    let sunHtml = '<small style="color: gray;">Loading sunrise/sunset...</small>';
+    
+    // Fetch sunrise/sunset times
+    if (lat && lon) {
+        fetch(`https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lon}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.results) {
+                    const sunrise = data.results.sunrise.split(' ')[0];
+                    const sunset = data.results.sunset.split(' ')[0];
+                    sunHtml = `<small>🌅 Sunrise: ${sunrise} • 🌙 Sunset: ${sunset}</small>`;
+                    
+                    // Update the popup in real-time
+                    const popup = document.querySelector('.leaflet-popup-content');
+                    if (popup) {
+                        const sunSection = popup.querySelector('.sun-section');
+                        if (sunSection) {
+                            sunSection.innerHTML = sunHtml;
+                        }
+                    }
+                }
+            })
+            .catch(err => console.log('Sunrise/Sunset API error:', err));
+    } else {
+        console.log('No lat/lon available for API call');
+    }
 
     return `
         <div class="business-popup">
@@ -141,9 +187,17 @@ function createPopupContent(business) {
             <div><strong>Address:</strong> ${address}</div>
             ${description ? `<div><em>${description}</em></div>` : ''}
             <div><strong>Phone:</strong> ${phone}</div>
+            
+            <hr style="margin: 8px 0;">
+            
+            <div class="sun-section" style="font-size: 13px; margin: 6px 0;">
+                ${sunHtml}
+            </div>
         </div>
     `;
 }
+
+
  
 function showBusinessInfo(business) {
     const infoPanel = document.getElementById('business-info');
