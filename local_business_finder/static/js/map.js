@@ -2,12 +2,16 @@
 
 let businessMarkers = L.layerGroup();
 let allBusinessesData = [];
+let toiletMarkers = L.layerGroup();
+let map;
+
 
 // Initialize map when page loads
 document.addEventListener('DOMContentLoaded', function () {
     initializeMap();
     loadBusinesses();
     setupEventListeners();
+    loadToilets();
 });
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/static/service-worker.js')
@@ -29,6 +33,7 @@ function initializeMap() {
 
     // Add the markers layer group to map
     businessMarkers.addTo(map);
+    toiletMarkers.addTo(map);
 }
 
 function loadBusinesses() {
@@ -136,6 +141,42 @@ function displayBusinessesOnMap(businesses) {
             console.error('Error fitting map bounds:', error);
         }
     }
+}
+function loadToilets() {
+    console.log('Loading toilets...');
+    fetch('/static/data/public-toilets-dcc-2021.geojson')
+        .then(r => {
+            console.log('Toilets fetch status:', r.status);
+            return r.json();
+        })
+        .then(data => {
+            console.log('Toilets features:', data.features?.length);
+            toiletMarkers.clearLayers();
+
+            data.features.forEach(feature => {
+                const [lng, lat] = feature.geometry.coordinates;
+                const props = feature.properties;
+
+                const toiletIcon = L.icon({
+                    iconUrl: '/static/image/toilet.svg', // or reuse matcha icon
+                    iconSize: [28, 28],
+                    iconAnchor: [14, 28],
+                    popupAnchor: [0, -28],
+                });
+
+                const marker = L.marker([lat, lng], { icon: toiletIcon })
+                    .bindPopup(`
+                        <div>
+                            <strong>Public toilet</strong><br>
+                            ${props.Location || 'Unknown location'}<br>
+                            <em>${props['Opening Hours'] || 'Opening hours not listed'}</em>
+                        </div>
+                    `);
+
+                toiletMarkers.addLayer(marker);
+            });
+        })
+        .catch(err => console.error('Error loading toilets GeoJSON:', err));
 }
 
 function createPopupContent(business, lat, lon) {
