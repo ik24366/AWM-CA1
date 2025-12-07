@@ -49,6 +49,7 @@ function App() {
   const [stations, setStations] = useState([]);
   const [selectedStation, setSelectedStation] = useState(null);
   const [realtimeTrains, setRealtimeTrains] = useState([]);
+  const [solarData, setSolarData] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [userLocation] = useState({ lat: 53.35, lng: -6.26 }); // Default center
 
@@ -70,6 +71,12 @@ function App() {
       .then((r) => r.json())
       .then((data) => setStations(data.stations || []))
       .catch((err) => console.error('Error loading stations:', err));
+
+    // Fetch Sunrise/Sunset Data (Dublin)
+    fetch('https://api.sunrise-sunset.org/json?lat=53.3498&lng=-6.2603&date=today')
+      .then(r => r.json())
+      .then(data => setSolarData(data.results))
+      .catch(err => console.error('Error loading solar data:', err));
   }, []);
 
   // Fetch real-time data when a station is selected
@@ -224,10 +231,39 @@ function App() {
               const props = feature.properties || {};
               return (
                 <Marker key={`biz-${idx}`} position={[lat, lng]} icon={matchaIcon}>
-                  <Popup>
-                    <strong>{props.name}</strong>
-                    <br />
-                    {props.address}
+                  <Popup className="business-popup">
+                    <h3 style={{ margin: '0 0 5px 0', color: '#78A153' }}>{props.name}</h3>
+
+                    <div style={{ fontSize: '0.9rem', lineHeight: '1.4' }}>
+                      <div><strong>Category:</strong> {props.category}</div>
+                      <div><strong>Rating:</strong> {props.rating} / 5</div>
+                      <div><strong>Price:</strong> {props.price_range}</div>
+                      {props.tags && <div><strong>Tags:</strong> {props.tags}</div>}
+
+                      <div style={{ marginTop: '5px' }}><strong>Address:</strong> {props.address}</div>
+
+                      {props.description && (
+                        <div style={{ fontStyle: 'italic', margin: '8px 0', color: '#555' }}>
+                          {props.description}
+                        </div>
+                      )}
+
+                      {props.phone_number && <div><strong>Phone:</strong> {props.phone_number}</div>}
+                    </div>
+
+                    {solarData && (
+                      <div style={{
+                        marginTop: '10px',
+                        paddingTop: '8px',
+                        borderTop: '1px solid #ccc',
+                        display: 'flex',
+                        gap: '10px',
+                        fontSize: '0.85rem'
+                      }}>
+                        <span>🌅 Sunrise: {solarData.sunrise}</span>
+                        <span>🌙 Sunset: {solarData.sunset}</span>
+                      </div>
+                    )}
                   </Popup>
                 </Marker>
               );

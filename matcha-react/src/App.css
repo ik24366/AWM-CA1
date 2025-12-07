@@ -124,16 +124,33 @@
   position: relative;
 }
 
-/* Leaflet Overrides for Dark Theme */
+/* Leaflet Popup overrides for Dark Theme */
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background-color: var(--surface-color);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+}
+
+.leaflet-popup-close-button {
+  color: var(--text-color) !important;
+}
+
+/* Ensure description text inside popup is readable */
+.leaflet-popup-content {
+  color: #333;
+  /* Reset to dark text for the white/light popup background if not using dark theme everywhere */
+}
+
+/* BUT: We are forcing dark theme on popup wrapper above */
 .leaflet-popup-content-wrapper {
-  background: var(--surface-color);
-  color: var(--text-primary);
-  border-radius: 8px;
-  border: 1px solid var(--primary-color);
+  background-color: #f9f9f9 !important;
+  /* Let's keep popups light for contrast as per screenshot */
+  color: #333 !important;
 }
 
 .leaflet-popup-tip {
-  background: var(--surface-color);
+  background-color: #f9f9f9 !important;
 }
 
 .leaflet-container {
