@@ -2,17 +2,17 @@
 
 let businessMarkers = L.layerGroup();
 let allBusinessesData = [];
- 
+
 // Initialize map when page loads
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     initializeMap();
     loadBusinesses();
     setupEventListeners();
 });
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/static/service-worker.js')
-    .then(reg => console.log('SW registered', reg))
-    .catch(err => console.log('SW failed', err));
+    navigator.serviceWorker.register('/static/service-worker.js')
+        .then(reg => console.log('SW registered', reg))
+        .catch(err => console.log('SW failed', err));
 }
 
 
@@ -20,21 +20,21 @@ if ('serviceWorker' in navigator) {
 function initializeMap() {
     // Initialize the map - Center on Dublin area 
     map = L.map('map').setView([53.35, -6.26], 12);
- 
+
     // Add OpenStreetMap tiles
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors',
         maxZoom: 18
     }).addTo(map);
- 
+
     // Add the markers layer group to map
     businessMarkers.addTo(map);
 }
- 
+
 function loadBusinesses() {
     console.log('Loading businesses...');
     showLoading(true);
-   
+
     fetch('/api/businesses/')
         .then(response => {
             if (!response.ok) {
@@ -59,56 +59,73 @@ function loadBusinesses() {
         .finally(() => {
             showLoading(false);
         });
-        // Fetch business data GeoJSON from API
+    // Fetch business data GeoJSON from API
 
 
-   
+
 
 }
- 
+
 function displayBusinessesOnMap(businesses) {
     // Clear existing markers
     businessMarkers.clearLayers();
-   
+
     businesses.forEach(business => {
         try {
             const matchaIcon = L.icon({
-                iconUrl: '/static/image/Matcha.svg',  // Adjust path as appropriate
-                iconSize: [40, 40],        // adjust as needed
-                iconAnchor: [20, 40],      // bottom point of the icon corresponds to the marker's actual location
-                popupAnchor: [0, -40],     // where popups open relative to the icon
+                iconUrl: '/static/image/Matcha.svg',
+                iconSize: [40, 40],
+                iconAnchor: [20, 40],
+                popupAnchor: [0, -40],
             });
 
             const { geometry, properties } = business;
-           
+
             if (!geometry || !geometry.coordinates || !Array.isArray(geometry.coordinates)) {
                 console.warn('Invalid geometry for business:', properties?.name || 'Unknown');
                 return;
             }
-           
+
             const [lng, lat] = geometry.coordinates;
-           
+
             if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
                 console.warn('Invalid coordinates for business:', properties?.name, lat, lng);
                 return;
             }
-           
-           const marker = L.marker([lat, lng], { icon: matchaIcon })
-            .bindPopup(createPopupContent(properties), { maxWidth: 300, className: 'custom-popup' });
 
-            marker.on('click', function() {
+            const marker = L.marker([lat, lng], { icon: matchaIcon })
+                .bindPopup(createPopupContent(properties, lat, lng), { maxWidth: 300, className: 'custom-popup' });
+
+            marker.on('click', function () {
                 showBusinessInfo(properties);
             });
-           
-            marker.businessData = properties;  // store data for reference
-           
+
+            marker.businessData = properties;
+
             businessMarkers.addLayer(marker);
-           
+
+            // PRE-FETCH sunrise/sunset and attach to properties
+            const apiUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&daily=sunrise,sunset&timezone=auto`;
+            fetch(apiUrl)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.daily && data.daily.sunrise && data.daily.sunset) {
+                        const sunriseISO = data.daily.sunrise[0];
+                        const sunsetISO = data.daily.sunset[0];
+                        properties.sunrise = sunriseISO.split('T')[1];
+                        properties.sunset = sunsetISO.split('T')[1];
+
+                        // Update the popup with new data
+                        marker.setPopupContent(createPopupContent(properties, lat, lng));
+                    }
+                })
+                .catch(err => console.log('Error fetching sun data:', err));
+
         } catch (error) {
             console.error('Error creating marker for business:', business, error);
         }
     });
-   
+
     if (businesses.length > 0) {
         try {
             const group = new L.featureGroup(businessMarkers.getLayers());
@@ -120,8 +137,8 @@ function displayBusinessesOnMap(businesses) {
         }
     }
 }
- 
-function createPopupContent(business) {
+
+function createPopupContent(business, lat, lon) {
     const name = business.name || 'Unknown Business';
     const category = business.category || 'Unknown Category';
     const description = business.description || '';
@@ -135,46 +152,10 @@ function createPopupContent(business) {
     const price = business.price_range || 'N/A';
     const score = business.score !== undefined ? business.score : null;
     const tags = business.tags ? business.tags.split(',').join(', ') : '';
-    
-    // Extract lat/lon from the Business model location field
-    let lat = null;
-    let lon = null;
-    
-    if (business.location && business.location.coordinates) {
-        // GeoJSON format: [longitude, latitude]
-        lon = business.location.coordinates[0];
-        lat = business.location.coordinates[1];
-    }
-    
-    console.log('Business:', business);
-    console.log('Lat:', lat, 'Lon:', lon);
-    
-    let sunHtml = '<small style="color: gray;">Loading sunrise/sunset...</small>';
-    
-    // Fetch sunrise/sunset times
-    if (lat && lon) {
-        fetch(`https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lon}`)
-            .then(r => r.json())
-            .then(data => {
-                if (data.results) {
-                    const sunrise = data.results.sunrise.split(' ')[0];
-                    const sunset = data.results.sunset.split(' ')[0];
-                    sunHtml = `<small>🌅 Sunrise: ${sunrise} • 🌙 Sunset: ${sunset}</small>`;
-                    
-                    // Update the popup in real-time
-                    const popup = document.querySelector('.leaflet-popup-content');
-                    if (popup) {
-                        const sunSection = popup.querySelector('.sun-section');
-                        if (sunSection) {
-                            sunSection.innerHTML = sunHtml;
-                        }
-                    }
-                }
-            })
-            .catch(err => console.log('Sunrise/Sunset API error:', err));
-    } else {
-        console.log('No lat/lon available for API call');
-    }
+
+    // Use pre-fetched sunrise/sunset or show loading
+    const sunrise = business.sunrise || '...';
+    const sunset = business.sunset || '...';
 
     return `
         <div class="business-popup">
@@ -190,30 +171,30 @@ function createPopupContent(business) {
             
             <hr style="margin: 8px 0;">
             
-            <div class="sun-section" style="font-size: 13px; margin: 6px 0;">
-                ${sunHtml}
+            <div style="font-size: 13px; margin: 6px 0;">
+                🌅 Sunrise: ${sunrise} • 🌙 Sunset: ${sunset}
             </div>
         </div>
     `;
 }
 
 
- 
+
 function showBusinessInfo(business) {
     const infoPanel = document.getElementById('business-info');
     const infoContent = document.getElementById('business-info-content');
-   
+
     if (!infoPanel || !infoContent) {
         console.warn('Business info panel elements not found');
         return;
     }
-   
+
     const name = business.name || 'Unknown Business';
     const category = business.category || 'Unknown Category';
     const description = business.description || '';
     const address = business.address || 'Address not specified';
     const phone = business.phone_number || 'Phone number not available';
-   
+
     infoContent.innerHTML = `
         <h5>${name}</h5>
         <p><strong>Category:</strong> ${category}</p>
@@ -221,94 +202,94 @@ function showBusinessInfo(business) {
         ${description ? `<p><em>${description}</em></p>` : ''}
         <p><strong>Phone:</strong> ${phone}</p>
     `;
-   
+
     infoPanel.style.display = 'block';
     infoPanel.scrollIntoView({ behavior: 'smooth' });
 }
- 
+
 function setupEventListeners() {
     // Optionally setup search filter, refresh buttons, etc.
-   document.getElementById('search-btn').onclick = function() {
-    var query = document.getElementById('city-search').value.trim().toLowerCase();
-    var filtered = allBusinessesData.filter(function(feature) {
-        var props = feature.properties || {};
-        return (props.name && props.name.toLowerCase().includes(query)) ||
-               (props.address && props.address.toLowerCase().includes(query));
-    });
-    displayBusinessesOnMap(filtered);
-    updateSidebar(filtered, businessMarkers.getLayers());
-    updateBusinessCount(filtered.length);
-};
+    document.getElementById('search-btn').onclick = function () {
+        var query = document.getElementById('city-search').value.trim().toLowerCase();
+        var filtered = allBusinessesData.filter(function (feature) {
+            var props = feature.properties || {};
+            return (props.name && props.name.toLowerCase().includes(query)) ||
+                (props.address && props.address.toLowerCase().includes(query));
+        });
+        displayBusinessesOnMap(filtered);
+        updateSidebar(filtered, businessMarkers.getLayers());
+        updateBusinessCount(filtered.length);
+    };
 }
 
-     // Proximity search using Add Cafe button
-       // Declare variable to hold pointer marker so we can update location on each click
-    let pointerMarker = null;
+// Proximity search using Add Cafe button
+// Declare variable to hold pointer marker so we can update location on each click
+let pointerMarker = null;
 
-    // Activate map click event after pressing "Add Cafe" button
-    const addCafeBtn = document.getElementById('add-city-btn');
-    if (addCafeBtn) {
-        addCafeBtn.onclick = function(event) {
-            event.preventDefault();
+// Activate map click event after pressing "Add Cafe" button
+const addCafeBtn = document.getElementById('add-city-btn');
+if (addCafeBtn) {
+    addCafeBtn.onclick = function (event) {
+        event.preventDefault();
 
-            alert('Click on the map to select location for proximity search');
+        alert('Click on the map to select location for proximity search');
 
-            // Enable map click event listener
-            map.once('click', async function(e) {
-                const { lat, lng } = e.latlng;
+        // Enable map click event listener
+        map.once('click', async function (e) {
+            const { lat, lng } = e.latlng;
 
-                // Remove previous pointerMarker if it exists
-                if (pointerMarker) {
-                    map.removeLayer(pointerMarker);
+            // Remove previous pointerMarker if it exists
+            if (pointerMarker) {
+                map.removeLayer(pointerMarker);
+            }
+
+            // Add marker at clicked location
+            pointerMarker = L.marker([lat, lng]).addTo(map);
+
+            // Call your backend proximity API with 1000m radius
+            try {
+                const response = await fetch(`/search/proximity/?lat=${lat}&lon=${lng}&radius=1000`);
+                const data = await response.json();
+
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                    return;
                 }
 
-                // Add marker at clicked location
-                pointerMarker = L.marker([lat, lng]).addTo(map);
+                const nearbyCafes = data.results || [];
 
-                // Call your backend proximity API with 1000m radius
-                try {
-                    const response = await fetch(`/search/proximity/?lat=${lat}&lon=${lng}&radius=1000`);
-                    const data = await response.json();
-
-                    if (data.error) {
-                        alert('Error: ' + data.error);
-                        return;
-                    }
-
-                    const nearbyCafes = data.results || [];
-
-                    if (nearbyCafes.length === 0) {
-                        pointerMarker.bindPopup('No cafes found within 1000 meters.').openPopup();
-                        return;
-                    }
-
-                    // Build popup content listing all nearby cafes
-                    let popupContent = '<div><strong>Cafes within 1000m:</strong><ul>';
-                    nearbyCafes.forEach(cafe => {
-                        popupContent += `<li><strong>${cafe.name}</strong> - ${cafe.address}</li>`;
-                    });
-                    popupContent += '</ul></div>';
-
-                    pointerMarker.bindPopup(popupContent).openPopup();
-
-                } catch (error) {
-                    console.error('Failed to fetch proximity cafes:', error);
-                    alert('Failed to fetch cafes.');
+                if (nearbyCafes.length === 0) {
+                    pointerMarker.bindPopup('No cafes found within 1000 meters.').openPopup();
+                    return;
                 }
-            });
-        };
-    }
-    
+
+                // Build popup content listing all nearby cafes
+                let popupContent = '<div><strong>Cafes within 1000m:</strong><ul>';
+                nearbyCafes.forEach(cafe => {
+                    popupContent += `<li><strong>${cafe.name}</strong> - ${cafe.address}</li>`;
+                });
+                popupContent += '</ul></div>';
+
+                pointerMarker.bindPopup(popupContent).openPopup();
+
+            } catch (error) {
+                console.error('Failed to fetch proximity cafes:', error);
+                alert('Failed to fetch cafes.');
+            }
+        });
+    };
+}
 
 
- 
+
+
 function updateBusinessCount(count) {
     const countElement = document.getElementById('business-count');
     if (countElement) {
         countElement.textContent = `${count} businesses loaded`;
     }
 }
- 
+
 function showLoading(show) {
     const btn = document.getElementById('refresh-btn');
     if (btn) {
@@ -321,7 +302,7 @@ function showLoading(show) {
         }
     }
 }
- 
+
 function showAlert(message, type) {
     const alertDiv = document.createElement('div');
     alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
@@ -329,14 +310,14 @@ function showAlert(message, type) {
     alertDiv.style.right = '20px';
     alertDiv.style.zIndex = '9999';
     alertDiv.style.minWidth = '300px';
-   
+
     alertDiv.innerHTML = `
         ${message}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     `;
-   
+
     document.body.appendChild(alertDiv);
-   
+
     setTimeout(() => {
         if (alertDiv.parentNode) {
             alertDiv.remove();
