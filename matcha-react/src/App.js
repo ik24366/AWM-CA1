@@ -267,7 +267,22 @@ function App() {
                       else if (dest.includes('belfast')) price = '16.00';
                       else if (dest.includes('maynooth')) price = '4.50';
 
-                      const link = `https://www.irishrail.ie/train-timetables/live-departure-train-times?key=${encodeURIComponent(selectedStation.name)}`;
+                      // Construct Deep Link for Journey Planner
+                      // Example format provided: https://journeyplanner.irishrail.ie/webapp/?start=1&REQ0JourneyStopsS0G=Dublin%20Connolly&REQ0JourneyStopsZ0G=Maynooth&journey_mode=single&REQ0JourneyDate=08%2F12%2F2025
+                      const originName = selectedStation.name;
+                      const date = new Date();
+                      const dateStr = `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+
+                      const params = new URLSearchParams({
+                        start: '1',
+                        REQ0JourneyStopsS0G: originName,
+                        REQ0JourneyStopsZ0G: destination,
+                        journey_mode: 'single',
+                        REQ0JourneyDate: dateStr,
+                        Number_adults: '1'
+                      });
+
+                      const link = `https://journeyplanner.irishrail.ie/webapp/?${params.toString()}`;
 
                       return { price, link };
                     };
