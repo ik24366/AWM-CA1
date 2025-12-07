@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -51,7 +51,13 @@ function App() {
   const [realtimeTrains, setRealtimeTrains] = useState([]);
   const [solarData, setSolarData] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [userLocation] = useState({ lat: 53.35, lng: -6.26 }); // Default center
+  const [userLocation, setUserLocation] = useState({ lat: 53.35, lng: -6.26 }); // Default center
+
+  // Theme State
+  const [darkMode, setDarkMode] = useState(true);
+
+  // Refs for markers to enable sidebar clicking
+  const markerRefs = useRef({});
 
   useEffect(() => {
     // Fetch Businesses
@@ -79,6 +85,15 @@ function App() {
       .catch(err => console.error('Error loading solar data:', err));
   }, []);
 
+  // Sync Body Class for Theme
+  useEffect(() => {
+    if (darkMode) {
+      document.body.classList.remove('light-mode');
+    } else {
+      document.body.classList.add('light-mode');
+    }
+  }, [darkMode]);
+
   // Fetch real-time data when a station is selected
   useEffect(() => {
     if (selectedStation) {
@@ -89,6 +104,36 @@ function App() {
         .catch(err => console.error('Error loading realtime info:', err));
     }
   }, [selectedStation]);
+
+  const handleProximitySearch = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setUserLocation({ lat: latitude, lng: longitude });
+          // Ideally fly to user location too, but we need map ref for that directly.
+          // For now, the list updates automatically via processedBusinesses
+        },
+        (error) => {
+          console.error("Error getting location:", error);
+          alert("Could not get your location.");
+        }
+      );
+    } else {
+      alert("Geolocation is not supported by your browser.");
+    }
+  };
+
+  const handleSidebarClick = (businessId, lat, lng) => {
+    // Fly to location (need map instance, or we can just open popup if we had map ref)
+    // Since we don't have easy map instance access here without refactoring MapContainer,
+    // we will focus on opening the popup via ref.
+    const marker = markerRefs.current[businessId];
+    if (marker) {
+      marker.openPopup();
+      // If we had the map instance we could flyTo here.
+    }
+  };
 
   const processedBusinesses = useMemo(() => {
     let filtered = businesses.filter((b) => {
@@ -117,17 +162,27 @@ function App() {
   return (
     <div className="app-container">
       <header className="header">
-        <h1>
-          <img src="/Matcha.svg" alt="Logo" className="logo-icon" />
-          Cafe Finder
-        </h1>
-        <input
-          type="search"
-          placeholder="Search cafes..."
-          className="search-input"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+        <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+          <h1>
+            <img src="/Matcha.svg" alt="Logo" className="logo-icon" />
+            Cafe Finder
+          </h1>
+          <input
+            type="search"
+            placeholder="Search cafes..."
+            className="search-input"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <div style={{ display: 'flex', gap: '10px', marginLeft: '1rem' }}>
+          <button className="theme-btn" onClick={handleProximitySearch}>
+            📍 Cafe Nearby
+          </button>
+          <button className="theme-btn" onClick={() => setDarkMode(!darkMode)}>
+            {darkMode ? '☀️ Light' : '🌙 Dark'}
+          </button>
+        </div>
       </header>
 
       <main className="content">
@@ -139,8 +194,18 @@ function App() {
                 <div className="recommended-list">
                   {recommended.map((feature, idx) => {
                     const props = feature.properties || {};
+                    // Use a unique ID based on business ID or fallback to index
+                    const uniqueId = props.id || `biz-${idx}`;
                     return (
-                      <div key={`rec-${idx}`} className="business-card" style={{ marginBottom: '1rem' }}>
+                      <div
+                        key={`rec-${idx}`}
+                        className="business-card"
+                        style={{ marginBottom: '1rem', cursor: 'pointer' }}
+                        onClick={() => {
+                          const [lng, lat] = feature.geometry.coordinates;
+                          handleSidebarClick(uniqueId, lat, lng);
+                        }}
+                      >
                         <h3>{props.name}</h3>
                         <p className="address">{props.address}</p>
                         <span className="distance">{feature.distance.toFixed(1)} km away</span>
@@ -156,8 +221,17 @@ function App() {
             <div className="business-list-items">
               {processedBusinesses.map((feature, idx) => {
                 const props = feature.properties || {};
+                const uniqueId = props.id || `biz-${idx}`;
                 return (
-                  <div key={idx} className="business-card" style={{ marginBottom: '1rem' }}>
+                  <div
+                    key={idx}
+                    className="business-card"
+                    style={{ marginBottom: '1rem', cursor: 'pointer' }}
+                    onClick={() => {
+                      const [lng, lat] = feature.geometry.coordinates;
+                      handleSidebarClick(uniqueId, lat, lng);
+                    }}
+                  >
                     <h3>{props.name}</h3>
                     <p className="address">{props.address}</p>
                     <span className="distance">{feature.distance.toFixed(1)} km away</span>
@@ -217,20 +291,37 @@ function App() {
           )}
 
           <MapContainer
-            center={[53.35, -6.26]}
+            center={userLocation} /* Dynamic center based on user location if updated*/
             zoom={12}
             style={{ height: '100%', width: '100%' }}
           >
             <TileLayer
-              url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+              url={darkMode
+                ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"}
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
             />
+            {/* User Location Marker if not default */}
+            {userLocation.lat !== 53.35 && (
+              <Marker position={[userLocation.lat, userLocation.lng]}>
+                <Popup>You are here</Popup>
+              </Marker>
+            )}
 
             {processedBusinesses.map((feature, idx) => {
               const [lng, lat] = feature.geometry.coordinates;
               const props = feature.properties || {};
+              const uniqueId = props.id || `biz-${idx}`;
+
               return (
-                <Marker key={`biz-${idx}`} position={[lat, lng]} icon={matchaIcon}>
+                <Marker
+                  key={`biz-${uniqueId}`}
+                  position={[lat, lng]}
+                  icon={matchaIcon}
+                  ref={(ref) => {
+                    if (ref) markerRefs.current[uniqueId] = ref;
+                  }}
+                >
                   <Popup className="business-popup">
                     <h3 style={{ margin: '0 0 5px 0', color: '#78A153' }}>{props.name}</h3>
 

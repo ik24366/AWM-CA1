@@ -33,14 +33,31 @@
 }
 
 .search-input {
-  background: #2C2C2C;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
   padding: 0.5rem 1rem;
+  border-radius: 20px;
+  border: 1px solid #444;
+  background: var(--input-bg);
   color: var(--text-primary);
   font-size: 0.9rem;
   width: 250px;
   font-family: 'Inter', sans-serif;
+}
+
+.theme-btn {
+  background: var(--surface-color);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.5rem 0.8rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.theme-btn:hover {
+  background: var(--hover-color);
+  border-color: var(--primary-color);
 }
 
 .search-input:focus {
