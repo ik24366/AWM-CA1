@@ -326,3 +326,29 @@
   background: #78A153;
   border-radius: 50%;
 }
+
+.ticket-info {
+  margin-top: 1rem;
+  padding-top: 0.8rem;
+  border-top: 1px dashed #333;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  font-size: 0.85rem;
+}
+
+.book-btn {
+  background: transparent;
+  color: #78A153;
+  text-decoration: none;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: color 0.2s;
+}
+
+.book-btn:hover {
+  color: #8bc268;
+  text-decoration: underline;
+}

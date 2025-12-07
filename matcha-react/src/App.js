@@ -257,34 +257,59 @@ function App() {
                 {realtimeTrains.length === 0 ? (
                   <p style={{ color: '#888', textAlign: 'center' }}>Loading live data...</p>
                 ) : (
-                  realtimeTrains.map((train, i) => (
-                    <div key={i} className="train-card">
-                      <div className="train-route">
-                        <span>{train.Origin}</span>
-                        <span className="arrow">&rarr;</span>
-                        <span>{train.Destination}</span>
-                      </div>
+                  realtimeTrains.map((train, i) => {
+                    // Helper to determine ticket info
+                    const getTicketInfo = (destination) => {
+                      const dest = destination.toLowerCase();
+                      let price = null;
+                      if (dest.includes('cork')) price = '32.00';
+                      else if (dest.includes('galway')) price = '25.00';
+                      else if (dest.includes('belfast')) price = '16.00';
+                      else if (dest.includes('maynooth')) price = '4.50';
 
-                      <div className="train-meta">
-                        <span style={{ backgroundColor: '#007aff', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontSize: '0.75rem' }}>
-                          {train.Traincode}
-                        </span>
-                        <span className={`train-status ${train.Late === '0' ? 'status-ontime' : 'status-late'}`}>
-                          {train.Late === '0' ? 'On Time' : `${train.Late} min late`}
-                        </span>
-                      </div>
+                      const link = `https://www.irishrail.ie/train-timetables/live-departure-train-times?key=${encodeURIComponent(selectedStation.name)}`;
 
-                      <div className="timeline">
-                        <div className="dot"></div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span>Arrives {train.Exparrival}</span>
-                            <span>Departs {train.Expdepart}</span>
+                      return { price, link };
+                    };
+
+                    const ticket = getTicketInfo(train.Destination);
+
+                    return (
+                      <div key={i} className="train-card">
+                        <div className="train-route">
+                          <span>{train.Origin}</span>
+                          <span className="arrow">&rarr;</span>
+                          <span>{train.Destination}</span>
+                        </div>
+
+                        <div className="train-meta">
+                          <span style={{ backgroundColor: '#007aff', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontSize: '0.75rem' }}>
+                            {train.Traincode}
+                          </span>
+                          <span className={`train-status ${train.Late === '0' ? 'status-ontime' : 'status-late'}`}>
+                            {train.Late === '0' ? 'On Time' : `${train.Late} min late`}
+                          </span>
+                        </div>
+
+                        <div className="timeline">
+                          <div className="dot"></div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span>Arrives {train.Exparrival}</span>
+                              <span>Departs {train.Expdepart}</span>
+                            </div>
                           </div>
                         </div>
+
+                        <div className="ticket-info">
+                          {ticket.price && <span style={{ marginRight: '10px', color: '#aaa' }}>Approx. from €{ticket.price}</span>}
+                          <a href={ticket.link} target="_blank" rel="noopener noreferrer" className="book-btn">
+                            Book via Irish Rail &rarr;
+                          </a>
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>
