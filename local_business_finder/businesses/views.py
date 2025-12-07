@@ -12,6 +12,10 @@ from .serializers import BusinessGeoSerializer
 from django.contrib.gis.geos import Point
 from django.contrib.gis.db.models.functions import Distance
 
+import requests
+import xml.etree.ElementTree as ET
+from django.http import JsonResponse
+
 
 # ============ BASIC VIEWS (keep from CA1) ============
 
@@ -224,4 +228,42 @@ def recommend_businesses(request):
         'count': len(results),
         'results': results,
         })
+def irish_rail_stations(request):
+    """
+    Proxy + parser for Irish Rail station XML.
+    Returns simple JSON: [{name, code, lat, lon}, ...]
+    """
+    url = "https://api.irishrail.ie/realtime/realtime.asmx/getAllStationsXML"
+    try:
+        r = requests.get(url, timeout=10)
+        r.raise_for_status()
+    except requests.RequestException as e:
+        return JsonResponse({"error": f"Irish Rail API error: {e}"}, status=502)
 
+    # Parse XML
+    root = ET.fromstring(r.content)
+
+    # Namespace used in the XML
+    ns = {"ir": "http://api.irishrail.ie/realtime/"}
+
+    stations = []
+    for s in root.findall("ir:objStation", ns):
+        name_el = s.find("ir:StationDesc", ns)
+        code_el = s.find("ir:StationCode", ns)
+        lat_el = s.find("ir:StationLatitude", ns)
+        lon_el = s.find("ir:StationLongitude", ns)
+
+        try:
+            lat = float(lat_el.text)
+            lon = float(lon_el.text)
+        except (TypeError, ValueError):
+            continue  # skip stations with invalid coords (e.g. 0,0)
+
+        stations.append({
+            "name": name_el.text if name_el is not None else "",
+            "code": code_el.text if code_el is not None else "",
+            "latitude": lat,
+            "longitude": lon,
+        })
+
+    return JsonResponse({"stations": stations})

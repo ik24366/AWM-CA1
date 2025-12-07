@@ -18,6 +18,7 @@ urlpatterns = [
     path('search/recommend/', views.recommend_businesses, name='recommend_businesses'),
     path('geojson/', views.business_geojson_list, name='business_geojson_list'),
     path('', include(router.urls)),
+    path("api/irish-rail-stations/", views.irish_rail_stations, name="irish_rail_stations"),
 
 
 

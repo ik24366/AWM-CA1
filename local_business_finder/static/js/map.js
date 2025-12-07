@@ -4,7 +4,7 @@ let businessMarkers = L.layerGroup();
 let allBusinessesData = [];
 let toiletMarkers = L.layerGroup();
 let map;
-
+let railStationMarkers;
 
 // Initialize map when page loads
 document.addEventListener('DOMContentLoaded', function () {
@@ -12,6 +12,8 @@ document.addEventListener('DOMContentLoaded', function () {
     loadBusinesses();
     setupEventListeners();
     loadToilets();
+    loadIrishRailStations();
+
 });
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/static/service-worker.js')
@@ -34,6 +36,7 @@ function initializeMap() {
     // Add the markers layer group to map
     businessMarkers.addTo(map);
     toiletMarkers.addTo(map);
+    railStationMarkers = L.layerGroup().addTo(map);
 }
 
 function loadBusinesses() {
@@ -178,6 +181,47 @@ function loadToilets() {
         })
         .catch(err => console.error('Error loading toilets GeoJSON:', err));
 }
+function loadIrishRailStations() {
+    console.log('Loading Irish Rail stations...');
+    fetch('/api/irish-rail-stations/')
+        .then(r => r.json())
+        .then(data => {
+            if (!data.stations) {
+                console.warn('No stations field in response');
+                return;
+            }
+
+            railStationMarkers.clearLayers();
+
+            const stationIcon = L.icon({
+                iconUrl: '/static/image/station.svg', // or reuse Matcha icon for now
+                iconSize: [24, 24],
+                iconAnchor: [12, 24],
+                popupAnchor: [0, -24],
+            });
+
+            data.stations.forEach(st => {
+                const lat = st.latitude;
+                const lng = st.longitude;
+
+                if (isNaN(lat) || isNaN(lng)) return;
+
+                const marker = L.marker([lat, lng], { icon: stationIcon })
+                    .bindPopup(`
+                        <div style="min-width: 180px;">
+                            <strong>${st.name}</strong><br>
+                            <small>Code: ${st.code}</small>
+                        </div>
+                    `);
+
+                railStationMarkers.addLayer(marker);
+            });
+
+            console.log(`Loaded ${data.stations.length} Irish Rail stations`);
+        })
+        .catch(err => console.error('Error loading Irish Rail stations:', err));
+}
+
 
 function createPopupContent(business, lat, lon) {
     const name = business.name || 'Unknown Business';
