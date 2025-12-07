@@ -18,6 +18,13 @@ const toiletIcon = L.icon({
   popupAnchor: [0, -32],
 });
 
+const trainIcon = L.icon({
+  iconUrl: '/Train.svg',
+  iconSize: [32, 32],
+  iconAnchor: [16, 32],
+  popupAnchor: [0, -32],
+});
+
 // Haversine formula to calculate distance in km
 function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
   var R = 6371; // Radius of the earth in km
@@ -39,6 +46,7 @@ function deg2rad(deg) {
 function App() {
   const [businesses, setBusinesses] = useState([]);
   const [toilets, setToilets] = useState([]);
+  const [stations, setStations] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [userLocation] = useState({ lat: 53.35, lng: -6.26 }); // Default center
 
@@ -54,6 +62,12 @@ function App() {
       .then((r) => r.json())
       .then((data) => setToilets(data.features || []))
       .catch((err) => console.error('Error loading toilets:', err));
+
+    // Fetch Train Stations
+    fetch('http://127.0.0.1:8000/api/irish-rail-stations/')
+      .then((r) => r.json())
+      .then((data) => setStations(data.stations || []))
+      .catch((err) => console.error('Error loading stations:', err));
   }, []);
 
   const processedBusinesses = useMemo(() => {
@@ -168,6 +182,20 @@ function App() {
                     <strong>{props.Location}</strong>
                     <br />
                     <span style={{ fontSize: '0.8rem', color: '#666' }}>{props['Opening Hours']}</span>
+                  </Popup>
+                </Marker>
+              );
+            })}
+
+            {stations.map((station, idx) => {
+              const { latitude, longitude, name, code } = station;
+              if (!latitude || !longitude) return null;
+              return (
+                <Marker key={`station-${idx}`} position={[latitude, longitude]} icon={trainIcon}>
+                  <Popup>
+                    <strong>{name}</strong>
+                    <br />
+                    <small>Code: {code}</small>
                   </Popup>
                 </Marker>
               );
