@@ -267,3 +267,48 @@ def irish_rail_stations(request):
         })
 
     return JsonResponse({"stations": stations})
+
+
+def irish_rail_realtime(request, station_code):
+    """
+    Fetch real-time train data for a given station code.
+    """
+    if not station_code:
+        return JsonResponse({"error": "Missing station_code"}, status=400)
+
+    url = f"http://api.irishrail.ie/realtime/realtime.asmx/getStationDataByCodeXML_WithNumMins?StationCode={station_code}&NumMins=90"
+    
+    try:
+        r = requests.get(url, timeout=10)
+        r.raise_for_status()
+    except requests.RequestException as e:
+        return JsonResponse({"error": f"Irish Rail API error: {e}"}, status=502)
+
+    # Parse XML
+    try:
+        root = ET.fromstring(r.content)
+    except ET.ParseError:
+        return JsonResponse({"error": "Failed to parse XML from Irish Rail"}, status=502)
+
+    # Namespace
+    ns = {"ir": "http://api.irishrail.ie/realtime/"}
+    
+    trains = []
+    for t in root.findall("ir:objStationData", ns):
+        trains.append({
+            "Traincode": t.find("ir:Traincode", ns).text,
+            "Stationfullname": t.find("ir:Stationfullname", ns).text,
+            "Origin": t.find("ir:Origin", ns).text,
+            "Destination": t.find("ir:Destination", ns).text,
+            "Duein": t.find("ir:Duein", ns).text,
+            "Late": t.find("ir:Late", ns).text,
+            "Exparrival": t.find("ir:Exparrival", ns).text,
+            "Expdepart": t.find("ir:Expdepart", ns).text,
+            "Scharrival": t.find("ir:Scharrival", ns).text,
+            "Schdepart": t.find("ir:Schdepart", ns).text,
+            "Direction": t.find("ir:Direction", ns).text,
+            "Traintype": t.find("ir:Traintype", ns).text,
+            "Locationtype": t.find("ir:Locationtype", ns).text,
+        })
+
+    return JsonResponse({"trains": trains})
