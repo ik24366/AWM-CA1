@@ -43,7 +43,8 @@ INSTALLED_APPS = [
     'businesses',
     "django.contrib.gis",
     'rest_framework',
-    "rest_framework_gis"
+    "rest_framework_gis",
+    "corsheaders",
 ]
 
 MIDDLEWARE = [
@@ -54,6 +55,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    'corsheaders.middleware.CorsMiddleware',
 ]
 
 ROOT_URLCONF = "local_business_finder.urls"
@@ -109,7 +111,9 @@ AUTH_PASSWORD_VALIDATORS = [
         "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
-
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:3000',
+]
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
