@@ -12,8 +12,9 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from pathlib import Path
 import os
-GDAL_LIBRARY_PATH = '/opt/homebrew/opt/gdal/lib/libgdal.dylib'  # Adjust if on Intel Mac, could be /usr/local/opt/gdal/lib/libgdal.dylib
+from dotenv import load_dotenv
 
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -85,11 +86,11 @@ WSGI_APPLICATION = "local_business_finder.wsgi.application"
 DATABASES = {
     "default": {
        'ENGINE': 'django.contrib.gis.db.backends.postgis',
-        'NAME': 'businesses_db',
-        'USER': 'ismailkhan',
-        'PASSWORD': 'awm123',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'NAME': os.getenv('POSTGRES_DB'),
+        'USER': os.getenv('POSTGRES_USER'),
+        'PASSWORD': os.getenv('POSTGRES_PASSWORD'),
+        'HOST': os.getenv('POSTGRES_HOST'),
+        'PORT': os.getenv('POSTGRES_PORT'),
     }
 }
 

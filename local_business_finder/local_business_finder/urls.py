@@ -17,18 +17,9 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from django.urls import path, include  
-from businesses.views import map_view
-from businesses.views import business_geojson_list
 
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    #path('api/', include('businesses.urls')),  # This exposes your business API at /api/businesses/
-    path('map/', map_view, name='map'),  
-    path('api/businesses/', business_geojson_list, name='business-geojson-list'),
     path('', include('businesses.urls')),  # This includes your proximity path
-    
-
-
-
 ]

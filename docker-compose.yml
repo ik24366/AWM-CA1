@@ -17,6 +17,20 @@ services:
       timeout: 5s
       retries: 5
 
+  frontend:
+    image: node:20-slim
+    container_name: react_frontend
+    working_dir: /app
+    volumes:
+      - ./matcha-react:/app
+    command: npm start
+    environment:
+      - WDS_SOCKET_PORT=0
+    expose:
+      - "3000"
+    depends_on:
+      - web
+
   web:
     build: ./local_business_finder
     container_name: django_web
@@ -25,7 +39,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_HOST: db
       POSTGRES_PORT: ${POSTGRES_PORT}
     volumes:
       - ./local_business_finder:/app
@@ -51,6 +65,7 @@ services:
       - "80:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./matcha-react/build:/var/www/frontend
     depends_on:
       - web
 
