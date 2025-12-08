@@ -43,3 +43,17 @@ class Business(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class TrainLog(models.Model):
+    """
+    Log of historical train arrivals to calculate delay tendencies.
+    """
+    train_code = models.CharField(max_length=20)   # e.g. A123
+    origin = models.CharField(max_length=50)       # e.g. CORK
+    destination = models.CharField(max_length=50)  # e.g. HEUSTON
+    minutes_late = models.IntegerField()           # e.g. 5
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.train_code} ({self.origin}->{self.destination}): {self.minutes_late}m late"

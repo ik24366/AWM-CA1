@@ -15,11 +15,12 @@ services:
       retries: 5
 
   frontend:
-    build: ./matcha-react 
+    build: ./matcha-react
     container_name: react_frontend
     working_dir: /app
     volumes:
       - ./matcha-react:/app
+      - /app/node_modules
     environment:
       - WDS_SOCKET_PORT=0
     depends_on:
@@ -58,6 +59,7 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
       - ./matcha-react/build:/var/www/frontend
+      - ./matcha-react/public:/var/www/static
     depends_on:
       - web
 

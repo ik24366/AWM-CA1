@@ -182,7 +182,7 @@ def irish_rail_stations(request):
 
 @api_view(['GET'])
 def irish_rail_realtime(request, station_code):
-    """Fetch real-time train data for a given station code."""
+    """Fetch real-time train data and log it for historic stats."""
     if not station_code:
         return Response({"error": "Missing station_code"}, status=400)
 
@@ -201,6 +201,13 @@ def irish_rail_realtime(request, station_code):
 
     ns = {"ir": "http://api.irishrail.ie/realtime/"}
     trains = []
+    
+    # Imports for aggregation (local to avoid circular deps if any, though top-level is fine)
+    from django.db.models import Avg, Count, Q
+    from django.utils import timezone
+    from datetime import timedelta
+    from .models import TrainLog
+
     for t in root.findall("ir:objStationData", ns):
         def get_text(elem, tag):
             node = elem.find(f"ir:{tag}", ns)
@@ -208,32 +215,71 @@ def irish_rail_realtime(request, station_code):
             
         origin = get_text(t, "Origin")
         destination = get_text(t, "Destination")
+        train_code = get_text(t, "Traincode")
+        late_val_str = get_text(t, "Late") # "5", "0", "-2"
         
-        # Calculate Stats
-        # Simple key generation: ORIGIN-DEST (upper case, first word for broad match if needed, but here exact)
-        # Irish rail names can correspond to main stations. Let's try heuristic matching.
-        # e.g. "Cork" -> "CORK", "Dublin Heuston" -> "HEUSTON"
-        
-        def normalize_station(name):
-            n = name.upper()
-            if "HEUSTON" in n: return "HEUSTON"
-            if "CONNOLLY" in n: return "CONNOLLY"
-            if "CORK" in n: return "CORK"
-            if "GALWAY" in n: return "GALWAY"
-            if "BELFAST" in n: return "BELFAST"
-            if "MAYNOOTH" in n: return "MAYNOOTH"
-            return n
+        try:
+            minutes_late = int(late_val_str)
+        except ValueError:
+            minutes_late = 0
 
-        route_key = f"{normalize_station(origin)}-{normalize_station(destination)}"
-        stats = ROUTE_STATS.get(route_key, {"avg_delay": 3, "on_time_rate": 0.88}) # Default fallbacks
+        # --- 1. INGESTION (Passive Learning) ---
+        # Only log if we haven't seen this train_code recently (e.g. last 2 hours)
+        # to avoid duplicate logs for the same journey
+        cutoff = timezone.now() - timedelta(hours=2)
+        exists = TrainLog.objects.filter(
+            train_code=train_code,
+            timestamp__gte=cutoff
+        ).exists()
+
+        if not exists:
+            TrainLog.objects.create(
+                train_code=train_code,
+                origin=origin,
+                destination=destination,
+                minutes_late=minutes_late
+            )
+
+        # --- 2. AGGREGATION (Dynamic Stats) ---
+        stats_qs = TrainLog.objects.filter(
+            origin=origin, 
+            destination=destination
+        )
+        
+        # If we have enough data (e.g. > 5 records), use DB stats. Else fallback.
+        if stats_qs.count() > 5:
+            agg = stats_qs.aggregate(
+                avg_delay=Avg('minutes_late'),
+                total_count=Count('id'),
+                on_time_count=Count('id', filter=Q(minutes_late__lte=0))
+            )
+            avg_delay = int(agg['avg_delay'] or 0)
+            on_time_rate = agg['on_time_count'] / agg['total_count']
+        else:
+            # Fallback to Mock Data logic if DB is empty
+            def normalize_station(name):
+                n = name.upper()
+                if "HEUSTON" in n: return "HEUSTON"
+                if "CONNOLLY" in n: return "CONNOLLY"
+                if "CORK" in n: return "CORK"
+                if "GALWAY" in n: return "GALWAY"
+                if "BELFAST" in n: return "BELFAST"
+                if "MAYNOOTH" in n: return "MAYNOOTH"
+                return n
+
+            route_key = f"{normalize_station(origin)}-{normalize_station(destination)}"
+            # Basic fallback
+            stats = ROUTE_STATS.get(route_key, {"avg_delay": 3, "on_time_rate": 0.88})
+            avg_delay = stats["avg_delay"]
+            on_time_rate = stats["on_time_rate"]
 
         trains.append({
-            "Traincode": get_text(t, "Traincode"),
+            "Traincode": train_code,
             "Stationfullname": get_text(t, "Stationfullname"),
             "Origin": origin,
             "Destination": destination,
             "Duein": get_text(t, "Duein"),
-            "Late": get_text(t, "Late"),
+            "Late": late_val_str,
             "Exparrival": get_text(t, "Exparrival"),
             "Expdepart": get_text(t, "Expdepart"),
             "Scharrival": get_text(t, "Scharrival"),
@@ -242,9 +288,9 @@ def irish_rail_realtime(request, station_code):
             "Traintype": get_text(t, "Traintype"),
             "Locationtype": get_text(t, "Locationtype"),
             "RouteStats": {
-                "AvgDelay": stats["avg_delay"],
-                "OnTimeRate": stats["on_time_rate"],
-                "Message": f"Typical delay: {stats['avg_delay']} min; on-time {int(stats['on_time_rate']*100)}%"
+                "AvgDelay": avg_delay,
+                "OnTimeRate": on_time_rate,
+                "Message": f"Typical delay: {avg_delay} min; on-time {int(on_time_rate*100)}%"
             }
         })
 
