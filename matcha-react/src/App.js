@@ -43,6 +43,28 @@ function deg2rad(deg) {
   return deg * (Math.PI / 180);
 }
 
+// WMO Weather Code to Emoji mapper
+function getWeatherIcon(code) {
+  if (code === undefined || code === null) return null;
+  // 0: Clear sky
+  if (code === 0) return '☀️';
+  // 1, 2, 3: Mainly clear, partly cloudy, and overcast
+  if (code <= 3) return '⛅';
+  // 45, 48: Fog
+  if (code <= 48) return '🌫️';
+  // 51-55: Drizzle
+  if (code <= 55) return 'DRIZZLE'; // we'll use emoji in a sec, 🌦️
+  // 61-67: Rain
+  if (code <= 67) return '🌧️';
+  // 71-77: Snow
+  if (code <= 77) return '❄️';
+  // 80-82: Rain showers
+  if (code <= 82) return '🌦️';
+  // 95-99: Thunderstorm
+  if (code <= 99) return '⚡';
+  return '🌡️';
+}
+
 function App() {
   const [businesses, setBusinesses] = useState([]);
   const [toilets, setToilets] = useState([]);
@@ -95,15 +117,38 @@ function App() {
   }, [darkMode]);
 
   // Fetch real-time data when a station is selected
+  const [weatherCache, setWeatherCache] = useState({});
+
   useEffect(() => {
     if (selectedStation) {
       setRealtimeTrains([]); // Clear previous data
       fetch(`/api/irish-rail-realtime/${selectedStation.code}/`)
         .then(r => r.json())
-        .then(data => setRealtimeTrains(data.trains || []))
+        .then(data => {
+          setRealtimeTrains(data.trains || []);
+
+          // Identify unique destinations to fetch weather for
+          const destinations = [...new Set((data.trains || []).map(t => t.Destination))];
+          destinations.forEach(destName => {
+            // Find coords from stations list
+            const destStation = stations.find(s => s.name.toLowerCase() === destName.toLowerCase());
+            if (destStation && destStation.latitude && destStation.longitude) {
+              // Fetch weather
+              fetch(`/api/weather/?lat=${destStation.latitude}&lon=${destStation.longitude}`)
+                .then(r => r.json())
+                .then(wData => {
+                  setWeatherCache(prev => ({
+                    ...prev,
+                    [destName]: wData
+                  }));
+                })
+                .catch(e => console.error("Weather fetch error", e));
+            }
+          });
+        })
         .catch(err => console.error('Error loading realtime info:', err));
     }
-  }, [selectedStation]);
+  }, [selectedStation, stations]);
 
   const handleProximitySearch = () => {
     if (navigator.geolocation) {
@@ -310,7 +355,32 @@ function App() {
                           <div className="dot"></div>
                           <div style={{ flex: 1 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                              <span>Arrives {train.Exparrival}</span>
+                              <span>Arrives {train.Exparrival}
+                                {(() => {
+                                  const wData = weatherCache[train.Destination];
+                                  if (wData && wData.hourly && wData.hourly.time) {
+                                    // Parse arrival time (HH:MM) to find closest hour index
+                                    // Use today's date + exparrival
+                                    const now = new Date();
+                                    const [h, m] = train.Exparrival.split(':');
+                                    let targetHour = parseInt(h, 10);
+                                    // If it's near the end of the hour, maybe round up? Simple match for now:
+                                    // OpenMeteo hourly returns ISO strings "2023-12-08T19:00"
+                                    // We just need to match the hour.
+                                    // Find the index in hourly.time where the string contains "T{targetHour}:00"
+                                    // Pad targetHour
+                                    const padH = String(targetHour).padStart(2, '0');
+                                    const timeStrMatches = wData.hourly.time.findIndex(t => t.includes(`T${padH}:00`));
+
+                                    if (timeStrMatches !== -1) {
+                                      const code = wData.hourly.weathercode[timeStrMatches];
+                                      const icon = getWeatherIcon(code);
+                                      return <span title="Weather at destination" style={{ marginLeft: '6px' }}>{icon}</span>;
+                                    }
+                                  }
+                                  return null;
+                                })()}
+                              </span>
                               <span>Departs {train.Expdepart}</span>
                             </div>
                           </div>
