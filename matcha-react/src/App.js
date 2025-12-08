@@ -328,6 +328,21 @@ function App() {
                           </span>
                         </div>
 
+                        {/* Delay Tendency / Historic Stats */}
+                        {train.RouteStats && (
+                          <div style={{
+                            fontSize: '0.8rem',
+                            marginTop: '4px',
+                            color: train.RouteStats.OnTimeRate > 0.8 ? '#2e7d32' : '#ed6c02',
+                            backgroundColor: train.RouteStats.OnTimeRate > 0.8 ? '#e8f5e9' : '#fff3e0',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            display: 'inline-block'
+                          }}>
+                            {train.RouteStats.Message}
+                          </div>
+                        )}
+
                         <div className="timeline">
                           <div className="dot"></div>
                           <div style={{ flex: 1 }}>

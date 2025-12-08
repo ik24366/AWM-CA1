@@ -129,6 +129,18 @@ def recommend_businesses(request):
 
 # ============ IRISH RAIL INTEGRATION (DRF) ============
 
+# Mock Historic Stats for Delay Tendency Feature
+ROUTE_STATS = {
+    "CORK-HEUSTON": {"avg_delay": 6, "on_time_rate": 0.82},
+    "HEUSTON-CORK": {"avg_delay": 6, "on_time_rate": 0.82},
+    "GALWAY-HEUSTON": {"avg_delay": 11, "on_time_rate": 0.70},
+    "HEUSTON-GALWAY": {"avg_delay": 11, "on_time_rate": 0.70},
+    "BELFAST-CONNOLLY": {"avg_delay": 4, "on_time_rate": 0.90},
+    "CONNOLLY-BELFAST": {"avg_delay": 4, "on_time_rate": 0.90},
+    "MAYNOOTH-CONNOLLY": {"avg_delay": 2, "on_time_rate": 0.95},
+    "CONNOLLY-MAYNOOTH": {"avg_delay": 2, "on_time_rate": 0.95},
+}
+
 @api_view(['GET'])
 def irish_rail_stations(request):
     """Proxy + parser for Irish Rail station XML."""
@@ -193,12 +205,33 @@ def irish_rail_realtime(request, station_code):
         def get_text(elem, tag):
             node = elem.find(f"ir:{tag}", ns)
             return node.text if node is not None else ""
+            
+        origin = get_text(t, "Origin")
+        destination = get_text(t, "Destination")
+        
+        # Calculate Stats
+        # Simple key generation: ORIGIN-DEST (upper case, first word for broad match if needed, but here exact)
+        # Irish rail names can correspond to main stations. Let's try heuristic matching.
+        # e.g. "Cork" -> "CORK", "Dublin Heuston" -> "HEUSTON"
+        
+        def normalize_station(name):
+            n = name.upper()
+            if "HEUSTON" in n: return "HEUSTON"
+            if "CONNOLLY" in n: return "CONNOLLY"
+            if "CORK" in n: return "CORK"
+            if "GALWAY" in n: return "GALWAY"
+            if "BELFAST" in n: return "BELFAST"
+            if "MAYNOOTH" in n: return "MAYNOOTH"
+            return n
+
+        route_key = f"{normalize_station(origin)}-{normalize_station(destination)}"
+        stats = ROUTE_STATS.get(route_key, {"avg_delay": 3, "on_time_rate": 0.88}) # Default fallbacks
 
         trains.append({
             "Traincode": get_text(t, "Traincode"),
             "Stationfullname": get_text(t, "Stationfullname"),
-            "Origin": get_text(t, "Origin"),
-            "Destination": get_text(t, "Destination"),
+            "Origin": origin,
+            "Destination": destination,
             "Duein": get_text(t, "Duein"),
             "Late": get_text(t, "Late"),
             "Exparrival": get_text(t, "Exparrival"),
@@ -208,6 +241,11 @@ def irish_rail_realtime(request, station_code):
             "Direction": get_text(t, "Direction"),
             "Traintype": get_text(t, "Traintype"),
             "Locationtype": get_text(t, "Locationtype"),
+            "RouteStats": {
+                "AvgDelay": stats["avg_delay"],
+                "OnTimeRate": stats["on_time_rate"],
+                "Message": f"Typical delay: {stats['avg_delay']} min; on-time {int(stats['on_time_rate']*100)}%"
+            }
         })
 
     return Response({"trains": trains})
