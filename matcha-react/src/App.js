@@ -180,29 +180,37 @@ function App() {
     }
   };
 
+  // Keep businesses for the map markers, even if sidebar lists stations
   const processedBusinesses = useMemo(() => {
     let filtered = businesses.filter((b) => {
       const name = b.properties.name.toLowerCase();
       const term = searchTerm.toLowerCase();
       return name.includes(term);
     });
+    return filtered;
+  }, [businesses, searchTerm]);
+
+  // Process Stations (Filter & Sort)
+  const processedStations = useMemo(() => {
+    let filtered = stations.filter((s) => {
+      const name = s.name.toLowerCase();
+      const term = searchTerm.toLowerCase();
+      return name.includes(term);
+    });
 
     // Sort by distance
-    filtered.forEach((b) => {
-      const [lng, lat] = b.geometry.coordinates;
-      b.distance = getDistanceFromLatLonInKm(
+    filtered.forEach((s) => {
+      s.distance = getDistanceFromLatLonInKm(
         userLocation.lat,
         userLocation.lng,
-        lat,
-        lng
+        s.latitude,
+        s.longitude
       );
     });
 
     filtered.sort((a, b) => a.distance - b.distance);
     return filtered;
-  }, [businesses, searchTerm, userLocation]);
-
-  const recommended = processedBusinesses.slice(0, 5);
+  }, [stations, searchTerm, userLocation]);
 
   return (
     <div className="app-container">
@@ -210,11 +218,11 @@ function App() {
         <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
           <h1>
             <img src="/Matcha.svg" alt="Logo" className="logo-icon" />
-            Cafe Finder
+            Irish Rail Finder
           </h1>
           <input
             type="search"
-            placeholder="Search cafes..."
+            placeholder="Search stations..."
             className="search-input"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -222,7 +230,7 @@ function App() {
         </div>
         <div style={{ display: 'flex', gap: '10px', marginLeft: '1rem' }}>
           <button className="theme-btn" onClick={handleProximitySearch}>
-            📍 Cafe Nearby
+            📍 Find Nearest Station
           </button>
           <button className="theme-btn" onClick={() => setDarkMode(!darkMode)}>
             {darkMode ? '☀️ Light' : '🌙 Dark'}
@@ -233,53 +241,22 @@ function App() {
       <main className="content">
         <div className="business-sidebar">
           <div className="sidebar-scroll">
-            {searchTerm === '' && (
-              <div className="recommended-section">
-                <h2 className="section-title">Recommended Near You</h2>
-                <div className="recommended-list">
-                  {recommended.map((feature, idx) => {
-                    const props = feature.properties || {};
-                    // Use a unique ID based on business ID or fallback to index
-                    const uniqueId = props.id || `biz-${idx}`;
-                    return (
-                      <div
-                        key={`rec-${idx}`}
-                        className="business-card"
-                        style={{ marginBottom: '1rem', cursor: 'pointer' }}
-                        onClick={() => {
-                          const [lng, lat] = feature.geometry.coordinates;
-                          handleSidebarClick(uniqueId, lat, lng);
-                        }}
-                      >
-                        <h3>{props.name}</h3>
-                        <p className="address">{props.address}</p>
-                        <span className="distance">{feature.distance.toFixed(1)} km away</span>
-                      </div>
-                    );
-                  })}
-                </div>
-                <hr style={{ borderColor: 'var(--border-color)', margin: '2rem 0' }} />
-              </div>
-            )}
-
-            <h2 className="section-title">All Cafes ({processedBusinesses.length})</h2>
+            <h2 className="section-title">Stations ({processedStations.length})</h2>
             <div className="business-list-items">
-              {processedBusinesses.map((feature, idx) => {
-                const props = feature.properties || {};
-                const uniqueId = props.id || `biz-${idx}`;
+              {processedStations.map((station, idx) => {
                 return (
                   <div
-                    key={idx}
+                    key={`st-${idx}`}
                     className="business-card"
                     style={{ marginBottom: '1rem', cursor: 'pointer' }}
                     onClick={() => {
-                      const [lng, lat] = feature.geometry.coordinates;
-                      handleSidebarClick(uniqueId, lat, lng);
+                      // Select station and fly to it logic could go here if map ref was avail
+                      setSelectedStation(station);
                     }}
                   >
-                    <h3>{props.name}</h3>
-                    <p className="address">{props.address}</p>
-                    <span className="distance">{feature.distance.toFixed(1)} km away</span>
+                    <h3>{station.name}</h3>
+                    <p className="address">Code: {station.code}</p>
+                    <span className="distance">{station.distance ? station.distance.toFixed(1) : '?'} km away</span>
                   </div>
                 );
               })}
