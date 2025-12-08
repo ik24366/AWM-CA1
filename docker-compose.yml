@@ -59,7 +59,7 @@ services:
       - db
 
   nginx:
-    image: nginx:latest
+    image: nginx:alpine
     container_name: nginx_container
     ports:
       - "80:80"

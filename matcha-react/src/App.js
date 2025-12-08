@@ -61,7 +61,7 @@ function App() {
 
   useEffect(() => {
     // Fetch Businesses
-    fetch('http://127.0.0.1:8000/api/businesses/')
+    fetch('/api/businesses/')
       .then((r) => r.json())
       .then((data) => setBusinesses(data.features || []))
       .catch((err) => console.error('Error loading businesses:', err));
@@ -73,7 +73,7 @@ function App() {
       .catch((err) => console.error('Error loading toilets:', err));
 
     // Fetch Train Stations
-    fetch('http://127.0.0.1:8000/api/irish-rail-stations/')
+    fetch('/api/irish-rail-stations/')
       .then((r) => r.json())
       .then((data) => setStations(data.stations || []))
       .catch((err) => console.error('Error loading stations:', err));
@@ -98,7 +98,7 @@ function App() {
   useEffect(() => {
     if (selectedStation) {
       setRealtimeTrains([]); // Clear previous data
-      fetch(`http://127.0.0.1:8000/api/irish-rail-realtime/${selectedStation.code}/`)
+      fetch(`/api/irish-rail-realtime/${selectedStation.code}/`)
         .then(r => r.json())
         .then(data => setRealtimeTrains(data.trains || []))
         .catch(err => console.error('Error loading realtime info:', err));
