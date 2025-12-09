@@ -1,99 +1,71 @@
-# Matcha Mapper
+# 🚂 Irish Rail Finder (Matcha Mapper CA2)
 
-A Django + Leaflet web application for mapping cafes with a focus on proximity-based search and interactive map discovery.
-
----
-
-## Features
-
-- 🌍 Interactive Leaflet map centered on Dublin, displaying all local cafes as custom matcha cup markers.
-- 🔍 **Search Bar:** Filter cafes by name or address instantly.
-- 📍 **Proximity Search:** Click "Add Cafe", then pick a location on the map to:
-    - Drop a pointer marker
-    - Instantly see a popup listing all cafes within 1000 meters of the click location
-- 🍵 **Theming:** Uses a matcha-inspired color palette and iconography for all map markers and UI.
-- 🗺️ **Live Sidebar:** Cafe list updates dynamically based on search or proximity results.
+A full‑stack location‑based services app for real‑time Irish Rail tracking, delay analysis, weather‑aware journey planning, and proximity‑based cafe discovery around stations.
 
 ---
 
-## Demo
+## ✨ Features
 
-To try it:
-
-1. Launch the Django development server:
-    ```
-    python manage.py runserver
-    ```
-2. Open [http://127.0.0.1:8000/map/](http://127.0.0.1:8000/map/) in your browser.
-3. Use the search bar or click "Add Cafe" to explore map features.
+- Live Irish Rail arrivals/departures with passive delay‑tendency stats and reliability badges per route.  
+- Weather‑aware journey planning using Open‑Meteo plus solar data for destination stations.  
+- Interactive Leaflet map with Irish Rail stations, cafes, and public toilets, including search and rich filtering.  
+- Proximity search: click on the map to find nearby cafes within a radius using PostGIS distance queries.  
+- Progressive Web App with offline support, “Add to Home Screen”, and dark/light mode.  
+- Deep links into the official Irish Rail journey planner for one‑click booking.
 
 ---
 
-## Technical Stack
+## 🛠 Technology Stack
 
-- **Backend:** Django 4.x, Python 3, (GeoDjango recommended), PostgreSQL/PostGIS if spatial filtering is server-side
-- **Frontend:** Leaflet.js, Bootstrap 5, Vanilla JS
-- **Data Format:** GeoJSON for cafe locations
-
----
-
-## Key Files
-
-- `map.js` – Interactive map logic (displays, filters, proximity, popups)
-- `base.html` – Main template (includes search bar, buttons, and map div)
-- `views.py` – Django views, API endpoints (all businesses, proximity)
-- `models.py` – Business model: name, address, category, description, lat/lon
+- **Backend:** Django 4.x, Django REST Framework, Python, PostgreSQL + PostGIS for spatial data.  
+- **Frontend:** React 18, Leaflet, Bootstrap/Vanilla JS, PWA service worker + manifest.  
+- **Infrastructure:** Docker & Docker Compose, Nginx reverse proxy, optional pgAdmin for DB management.  
+- **External APIs:** Irish Rail (XML), Open‑Meteo (weather), Sunrise‑Sunset, plus OpenStreetMap tiles.
 
 ---
 
-## How It Works
+## 🏗 Architecture & Key Files
 
-- On page load, the map fetches all businesses and displays them as custom icons.
-- The search bar filters by cafe name/address in real time.
-- The “Add Cafe” button enters proximity search mode: clicking the map triggers a backend API call and lists all nearby cafes in a popup.
-- The sidebar and map always reflect the current filter or search selection.
-
----
-
-## Setup
-
-1. **Clone and install dependencies**
-    ```
-    git clone <your-repo-url>
-    cd matcha-mapper
-    pip install -r requirements.txt
-    ```
-2. **Configure PostgreSQL/PostGIS (optional for advanced spatial features)**
-3. **Run migrations**:
-    ```
-    python manage.py migrate
-    ```
-4. **Load sample data** (if provided), or add cafes through admin.
+- Dockerised multi‑container setup: Nginx → React frontend → Django API → PostgreSQL/PostGIS database.  
+- Django app (`local_business_finder/businesses`) exposes REST endpoints for trains, businesses, proximity search, and weather.  
+- React app (`matcha-react/src/App.js`) consumes APIs, renders the Leaflet map, handles filters, delay stats, and PWA behaviour.  
+- Core files: `models.py` (Business, TrainLog), `views.py` (Irish Rail, weather, proximity), `serializers.py`, `urls.py`, `map/App.js`, `serviceWorkerRegistration.js`.
 
 ---
 
-## Credits
+## 🚀 Getting Started
 
-- [Leaflet.js](https://leafletjs.com/)
-- [Bootstrap](https://getbootstrap.com/)
-- Matcha cup icon and matcha theme by project author
+1. **Clone & configure**
+git clone <repository-url>
+cd AWM-CA1
+cp .env.example .env
+
+Update `.env` with PostgreSQL, pgAdmin, and port settings.
+
+2. **Run with Docker**
+docker-compose up --build
+- App: http://localhost  
+- API root: http://localhost/api/  
+- Django admin: http://localhost/api/admin/  
+- pgAdmin: http://localhost:5050  
+
+3. **Initial data (optional)**
+docker-compose exec web python manage.py createsuperuser
+docker-compose exec web python manage.py loaddata sample_businesses.json
 
 ---
 
-## Known Issues / TODO
+## 📚 CA Requirements Coverage (Summary)
 
-- Add “directions” or “reviews” features in future
-- Mobile map UX improvements
-- User authentication for cafe submissions
-
----
-
-## Contact
-
-Developed by Ismail Khan  
-For questions or bug reports, open an issue or email [support@example.com](mailto:support@example.com).
+- **PostgreSQL/PostGIS:** Spatial storage and proximity queries for cafes and stations.  
+- **Django + DRF:** MVC‑style middle layer with REST endpoints for trains, businesses, weather, and GeoJSON.  
+- **Front‑end (PWA):** React + Leaflet map with offline support, responsive UI, and mobile‑friendly design.  
+- **Cloud‑ready deployment:** Dockerised stack behind Nginx, suitable for deployment to AWS/Azure/DigitalOcean.  
+- **Innovation & UX:** Delay‑tendency analytics, weather overlays, deep booking links, theming, and rich proximity search.
 
 ---
 
+## 👨‍💻 Author
 
-
+Developed by **Ismail Khan** for Advanced Web Mapping CA2 (TU Dublin).  
+For questions or issues, please open a GitHub issue or contact the author.
